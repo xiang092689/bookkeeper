@@ -1,4 +1,4 @@
-/**
+/*
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -243,7 +243,7 @@ class Buffer {
      * Free the memory that backs this buffer.
      */
     void free() {
-        ReferenceCountUtil.safeRelease(buffer);
+        ReferenceCountUtil.release(buffer);
         buffer = null;
         byteBuffer = null;
     }

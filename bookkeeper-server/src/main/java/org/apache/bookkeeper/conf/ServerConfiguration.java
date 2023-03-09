@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -2146,6 +2146,7 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
      *          number of threads to handle journal callbacks.
      * @return server configuration
      */
+    @Deprecated
     public ServerConfiguration setNumJournalCallbackThreads(int numThreads) {
         setProperty(NUM_JOURNAL_CALLBACK_THREADS, numThreads);
         return this;
@@ -2156,6 +2157,7 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
      *
      * @return the number of threads that handle journal callbacks.
      */
+    @Deprecated
     public int getNumJournalCallbackThreads() {
         return getInt(NUM_JOURNAL_CALLBACK_THREADS, 1);
     }
@@ -3164,10 +3166,10 @@ public class ServerConfiguration extends AbstractConfiguration<ServerConfigurati
             throw new ConfigurationException("For persisiting explicitLac, journalFormatVersionToWrite should be >= 6"
                     + "and FileInfoFormatVersionToWrite should be >= 1");
         }
-        if (getMinorCompactionInterval() * SECOND < getGcWaitTime()) {
+        if (getMinorCompactionInterval() > 0 && getMinorCompactionInterval() * SECOND < getGcWaitTime()) {
             throw new ConfigurationException("minorCompactionInterval should be >= gcWaitTime.");
         }
-        if (getMajorCompactionInterval() * SECOND < getGcWaitTime()) {
+        if (getMajorCompactionInterval() > 0 && getMajorCompactionInterval() * SECOND < getGcWaitTime()) {
             throw new ConfigurationException("majorCompactionInterval should be >= gcWaitTime.");
         }
     }

@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -443,18 +443,17 @@ public class LedgerChecker {
                                                   }
                                               });
 
-                DistributionSchedule.WriteSet writeSet = lh.getDistributionSchedule().getWriteSet(entryToRead);
-                for (int i = 0; i < writeSet.size(); i++) {
+                DistributionSchedule ds = lh.getDistributionSchedule();
+                for (int i = 0; i < ds.getWriteQuorumSize(); i++) {
                     try {
                         acquirePermit();
-                        BookieId addr = curEnsemble.get(writeSet.get(i));
+                        BookieId addr = curEnsemble.get(ds.getWriteSetBookieIndex(entryToRead, i));
                         bookieClient.readEntry(addr, lh.getId(), entryToRead,
                                 eecb, null, BookieProtocol.FLAG_NONE);
                     } catch (InterruptedException e) {
                         LOG.error("InterruptedException when checking entry : {}", entryToRead, e);
                     }
                 }
-                writeSet.recycle();
                 return;
             } else {
                 fragments.add(lastLedgerFragment);

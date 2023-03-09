@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -61,6 +61,7 @@ import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 import io.netty.incubator.channel.uring.IOUringSocketChannel;
 import io.netty.util.Recycler;
 import io.netty.util.Recycler.Handle;
+import io.netty.util.ReferenceCountUtil;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import java.io.IOException;
@@ -777,9 +778,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         if (useV2WireProtocol) {
             if (writeFlags.contains(WriteFlag.DEFERRED_SYNC)) {
                 LOG.error("invalid writeflags {} for v2 protocol", writeFlags);
-                executor.executeOrdered(ledgerId, () -> {
-                    cb.writeComplete(BKException.Code.IllegalOpException, ledgerId, entryId, bookieId, ctx);
-                });
+                cb.writeComplete(BKException.Code.IllegalOpException, ledgerId, entryId, bookieId, ctx);
                 return;
             }
             completionKey = acquireV2Key(ledgerId, entryId, OperationType.ADD_ENTRY);
@@ -838,7 +837,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
             // usually checked in writeAndFlush, but we have extra check
             // because we need to release toSend.
             errorOut(completionKey);
-            toSend.release();
+            ReferenceCountUtil.release(toSend);
             return;
         } else {
             // addEntry times out on backpressure
@@ -850,7 +849,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         Object request = null;
         CompletionKey completionKey = null;
         if (useV2WireProtocol) {
-            request = new BookieProtocol.ReadRequest(BookieProtocol.CURRENT_PROTOCOL_VERSION,
+            request = BookieProtocol.ReadRequest.create(BookieProtocol.CURRENT_PROTOCOL_VERSION,
                                                      ledgerId, 0, (short) 0, null);
             completionKey = acquireV2Key(ledgerId, 0, OperationType.READ_LAC);
         } else {
@@ -934,7 +933,7 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
         Object request = null;
         CompletionKey completionKey = null;
         if (useV2WireProtocol) {
-            request = new BookieProtocol.ReadRequest(BookieProtocol.CURRENT_PROTOCOL_VERSION,
+            request = BookieProtocol.ReadRequest.create(BookieProtocol.CURRENT_PROTOCOL_VERSION,
                     ledgerId, entryId, (short) flags, masterKey);
             completionKey = acquireV2Key(ledgerId, entryId, OperationType.READ_ENTRY);
         } else {
@@ -1169,7 +1168,6 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
                     nettyOpLogger.registerFailedEvent(MathUtils.elapsedNanos(startTime), TimeUnit.NANOSECONDS);
                 }
             });
-
             channel.writeAndFlush(request, promise);
         } catch (Throwable e) {
             LOG.warn("Operation {} failed", StringUtils.requestToString(request), e);
@@ -1943,7 +1941,8 @@ public class PerChannelBookieClient extends ChannelInboundHandlerAdapter {
             handleReadResponse(readResponse.getLedgerId(),
                                readResponse.getEntryId(),
                                status, buffer, maxLAC, lacUpdateTimestamp);
-            buffer.release(); // meaningless using unpooled, but client may expect to hold the last reference
+            ReferenceCountUtil.release(
+                    buffer); // meaningless using unpooled, but client may expect to hold the last reference
         }
 
         private void handleReadResponse(long ledgerId,

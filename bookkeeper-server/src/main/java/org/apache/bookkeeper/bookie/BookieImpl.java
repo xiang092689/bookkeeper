@@ -1,4 +1,4 @@
-/**
+/*
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -69,6 +69,7 @@ import org.apache.bookkeeper.discover.RegistrationManager;
 import org.apache.bookkeeper.net.BookieId;
 import org.apache.bookkeeper.net.BookieSocketAddress;
 import org.apache.bookkeeper.net.DNS;
+import org.apache.bookkeeper.processor.RequestProcessor;
 import org.apache.bookkeeper.proto.BookkeeperInternalCallbacks.WriteCallback;
 import org.apache.bookkeeper.stats.NullStatsLogger;
 import org.apache.bookkeeper.stats.StatsLogger;
@@ -376,7 +377,6 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
                 }
             });
         ledgerStorage.setCheckpointer(Checkpointer.NULL);
-        ledgerStorage.setStorageStorageNotificationListener(LedgerStorageNotificationListener.NULL);
         return ledgerStorage;
     }
 
@@ -479,9 +479,9 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
             syncThread = new SyncThread(conf, getLedgerDirsListener(), ledgerStorage, checkpointSource, statsLogger);
         }
 
-        LedgerStorageNotificationListener storageNotificationListener = new LedgerStorageNotificationListener() {
+        LedgerStorage.LedgerDeletionListener ledgerDeletionListener = new LedgerStorage.LedgerDeletionListener() {
             @Override
-            public void ledgerRemovedFromStorage(long ledgerId) {
+            public void ledgerDeleted(long ledgerId) {
                 masterKeyCache.remove(ledgerId);
             }
         };
@@ -489,7 +489,7 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
         ledgerStorage.setStateManager(stateManager);
         ledgerStorage.setCheckpointSource(checkpointSource);
         ledgerStorage.setCheckpointer(syncThread);
-        ledgerStorage.setStorageStorageNotificationListener(storageNotificationListener);
+        ledgerStorage.registerLedgerDeletionListener(ledgerDeletionListener);
         handles = new HandleFactoryImpl(ledgerStorage);
 
         // Expose Stats
@@ -617,7 +617,8 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
         // validate filtered log ids only when we have markedLogId
         if (markedLog.getLogFileId() > 0) {
             if (logs.size() == 0 || logs.get(0) != markedLog.getLogFileId()) {
-                throw new IOException("Recovery log " + markedLog.getLogFileId() + " is missing");
+                String path = journal.getJournalDirectory().getAbsolutePath();
+                throw new IOException("Recovery log " + markedLog.getLogFileId() + " is missing at " + path);
             }
         }
 
@@ -810,30 +811,9 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
 
     @Override
     public void run() {
-        // bookie thread wait for journal thread
-        try {
-            // start journals
-            for (Journal journal: journals) {
-                journal.start();
-            }
-
-            // wait until journal quits
-            for (Journal journal: journals) {
-
-                journal.joinThread();
-            }
-            LOG.info("Journal thread(s) quit.");
-        } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            LOG.warn("Interrupted on running journal thread : ", ie);
-        }
-        // if the journal thread quits due to shutting down, it is ok
-        if (!stateManager.isShuttingDown()) {
-            // some error found in journal thread and it quits
-            // following add operations to it would hang unit client timeout
-            // so we should let bookie server exists
-            LOG.error("Journal manager quits unexpectedly.");
-            triggerBookieShutdown(ExitCode.BOOKIE_EXCEPTION);
+        // start journals
+        for (Journal journal: journals) {
+            journal.start();
         }
     }
 
@@ -891,8 +871,6 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
 
                 // Shutdown the EntryLogger which has the GarbageCollector Thread running
                 ledgerStorage.shutdown();
-
-                // close Ledger Manager
 
                 //Shutdown disk checker
                 dirsMonitor.shutdown();
@@ -964,7 +942,7 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
                     getJournal(ledgerId).logAddEntry(
                             masterKeyEntry, false /* ackBeforeSync */, new NopWriteCallback(), null);
                 } finally {
-                    ReferenceCountUtil.safeRelease(masterKeyEntry);
+                    ReferenceCountUtil.release(masterKeyEntry);
                 }
             }
         }
@@ -1011,7 +989,7 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
                 bookieStats.getAddBytesStats().registerFailedValue(entrySize);
             }
 
-            ReferenceCountUtil.safeRelease(entry);
+            ReferenceCountUtil.release(entry);
         }
     }
 
@@ -1042,9 +1020,9 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
             stateManager.transitionToReadOnlyMode();
             throw new IOException(e);
         } finally {
-            ReferenceCountUtil.safeRelease(entry);
+            ReferenceCountUtil.release(entry);
             if (explicitLACEntry != null) {
-                ReferenceCountUtil.safeRelease(explicitLACEntry);
+                ReferenceCountUtil.release(explicitLACEntry);
             }
         }
     }
@@ -1105,7 +1083,7 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
                 bookieStats.getAddBytesStats().registerFailedValue(entrySize);
             }
 
-            ReferenceCountUtil.safeRelease(entry);
+            ReferenceCountUtil.release(entry);
         }
     }
 
@@ -1302,6 +1280,13 @@ public class BookieImpl extends BookieCriticalThread implements Bookie {
             } else {
                 bookieStats.getReadEntryStats().registerFailedEvent(elapsedNanos, TimeUnit.NANOSECONDS);
             }
+        }
+    }
+
+    @Override
+    public void setRequestProcessor(RequestProcessor requestProcessor) {
+        for (Journal journal : journals) {
+            journal.setRequestProcessor(requestProcessor);
         }
     }
 }
