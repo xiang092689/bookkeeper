@@ -29,9 +29,12 @@ import org.apache.bookkeeper.tools.framework.Cli;
 import org.apache.bookkeeper.tools.framework.CliCommand;
 import org.apache.bookkeeper.tools.framework.CliFlags;
 import org.apache.bookkeeper.tools.framework.CliSpec;
-import org.apache.commons.configuration.CompositeConfiguration;
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.configuration2.CompositeConfiguration;
+import org.apache.commons.configuration2.FileBasedConfiguration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
+import org.apache.commons.configuration2.builder.fluent.Parameters;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 
 /**
  * Base bk command class.
@@ -80,7 +83,8 @@ public abstract class BKCommand<CommandFlagsT extends CliFlags> extends CliComma
         if (!Strings.isNullOrEmpty(bkFlags.configFile)) {
             try {
                 URL configFileUrl = Paths.get(bkFlags.configFile).toUri().toURL();
-                PropertiesConfiguration loadedConf = new PropertiesConfiguration(configFileUrl);
+                FileBasedConfiguration loadedConf = new FileBasedConfigurationBuilder<FileBasedConfiguration>(PropertiesConfiguration.class)
+                        .configure(new Parameters().properties().setFileName(configFileUrl.getFile())).getConfiguration();
                 conf.addConfiguration(loadedConf);
             } catch (MalformedURLException e) {
                 log.error("Could not open configuration file : {}", bkFlags.configFile, e);

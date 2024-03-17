@@ -30,9 +30,14 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.FileConfiguration;
-import org.apache.commons.configuration.reloading.FileChangedReloadingStrategy;
+
+import org.apache.commons.configuration2.FileBasedConfiguration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.commons.configuration2.builder.DefaultReloadingDetectorFactory;
+import org.apache.commons.configuration2.builder.ReloadingFileBasedConfigurationBuilder;
+import org.apache.commons.configuration2.builder.fluent.Parameters;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.reloading.PeriodicReloadingTrigger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,7 +60,7 @@ public class ConfigurationSubscription {
     private final int reloadPeriod;
     private final TimeUnit reloadUnit;
     private final List<FileConfigurationBuilder> fileConfigBuilders;
-    private final List<FileConfiguration> fileConfigs;
+    private final List<ReloadingFileBasedConfigurationBuilder<PropertiesConfiguration>> fileConfigs;
     private final CopyOnWriteArraySet<ConfigurationListener> confListeners;
 
     public ConfigurationSubscription(ConcurrentBaseConfiguration viewConfig,
@@ -74,9 +79,8 @@ public class ConfigurationSubscription {
         this.reloadUnit = reloadUnit;
         this.fileConfigBuilders = fileConfigBuilders;
         this.fileConfigs = Lists.newArrayListWithExpectedSize(this.fileConfigBuilders.size());
-        this.confListeners = new CopyOnWriteArraySet<ConfigurationListener>();
+        this.confListeners = new CopyOnWriteArraySet<>();
         reload();
-        scheduleReload();
     }
 
     public void registerListener(ConfigurationListener listener) {
@@ -91,11 +95,7 @@ public class ConfigurationSubscription {
         if (fileConfigs.isEmpty()) {
             try {
                 for (FileConfigurationBuilder fileConfigBuilder : fileConfigBuilders) {
-                    FileConfiguration fileConfig = fileConfigBuilder.getConfiguration();
-                    FileChangedReloadingStrategy reloadingStrategy = new FileChangedReloadingStrategy();
-                    reloadingStrategy.setRefreshDelay(0);
-                    fileConfig.setReloadingStrategy(reloadingStrategy);
-                    fileConfigs.add(fileConfig);
+                    fileConfigs.add(fileConfigBuilder.getConfiguration(0L));
                 }
             } catch (ConfigurationException ex) {
                 if (!fileNotFound(ex)) {
@@ -106,31 +106,19 @@ public class ConfigurationSubscription {
         return !fileConfigs.isEmpty();
     }
 
-    private void scheduleReload() {
-        executorService.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                reload();
-            }
-        }, 0, reloadPeriod, reloadUnit);
-    }
-
     @VisibleForTesting
-    void reload() {
+    void reload() throws ConfigurationException {
         // No-op if already loaded.
         if (!initConfig()) {
             return;
         }
         // Reload if config exists.
         Set<String> confKeys = Sets.newHashSet();
-        for (FileConfiguration fileConfig : fileConfigs) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Check and reload config, file={}, lastModified={}", fileConfig.getFile(),
-                        fileConfig.getFile().lastModified());
-            }
-            fileConfig.reload();
+        for (ReloadingFileBasedConfigurationBuilder<PropertiesConfiguration> fileConfigBuilder : fileConfigs) {
+            fileConfigBuilder.getFileHandler().getFileName();
+            fileConfigBuilder.getReloadingController().checkForReloading(null);
             // load keys
-            Iterator keyIter = fileConfig.getKeys();
+            Iterator keyIter = fileConfigBuilder.getConfiguration().getKeys();
             while (keyIter.hasNext()) {
                 String key = (String) keyIter.next();
                 confKeys.add(key);
@@ -146,12 +134,13 @@ public class ConfigurationSubscription {
         }
         LOG.info("Reload features : {}", confKeys);
         // load keys from files
-        for (FileConfiguration fileConfig : fileConfigs) {
+        for (ReloadingFileBasedConfigurationBuilder<PropertiesConfiguration> fileConfigBuilder : fileConfigs) {
+            FileBasedConfiguration fileConfig = fileConfigBuilder.getConfiguration();
             try {
                 loadView(fileConfig);
             } catch (Exception ex) {
                 if (!fileNotFound(ex)) {
-                    LOG.error("Config reload failed for file {}", fileConfig.getFileName(), ex);
+                    LOG.error("Config reload failed for file", ex);
                 }
             }
         }
@@ -165,7 +154,7 @@ public class ConfigurationSubscription {
             || ex.getCause() != null && ex.getCause() instanceof FileNotFoundException;
     }
 
-    private void loadView(FileConfiguration fileConfig) {
+    private void loadView(FileBasedConfiguration fileConfig) {
         Iterator fileIter = fileConfig.getKeys();
         while (fileIter.hasNext()) {
             String key = (String) fileIter.next();
@@ -180,7 +169,7 @@ public class ConfigurationSubscription {
         viewConfig.clearProperty(key);
     }
 
-    private void setViewProperty(FileConfiguration fileConfig,
+    private void setViewProperty(FileBasedConfiguration fileConfig,
                                  String key,
                                  Object value) {
         if (!viewConfig.containsKey(key) || !viewConfig.getProperty(key).equals(value)) {

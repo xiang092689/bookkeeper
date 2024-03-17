@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -44,7 +43,7 @@ import org.apache.bookkeeper.test.TestStatsProvider;
 import org.apache.bookkeeper.test.TestStatsProvider.TestOpStatsLogger;
 import org.apache.bookkeeper.test.TestStatsProvider.TestStatsLogger;
 import org.apache.bookkeeper.util.DiskChecker;
-import org.apache.commons.lang.mutable.MutableInt;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -382,7 +381,7 @@ public class CreateNewLogTest {
 
 
     int highestFrequencyOfEntryLogsPerLedgerDir(Set<BufferedLogChannelWithDirInfo> copyOfCurrentLogsWithDirInfo) {
-        Map<File, MutableInt> frequencyOfEntryLogsInLedgerDirs = new HashMap<File, MutableInt>();
+        Map<File, MutableInt> frequencyOfEntryLogsInLedgerDirs = new HashMap<>();
         for (BufferedLogChannelWithDirInfo logChannelWithDirInfo : copyOfCurrentLogsWithDirInfo) {
             File parentDir = logChannelWithDirInfo.getLogChannel().getLogFile().getParentFile();
             if (frequencyOfEntryLogsInLedgerDirs.containsKey(parentDir)) {
@@ -392,8 +391,8 @@ public class CreateNewLogTest {
             }
         }
         @SuppressWarnings("unchecked")
-        int highestFreq = ((Entry<File, MutableInt>) (frequencyOfEntryLogsInLedgerDirs.entrySet().stream()
-                .max(Map.Entry.comparingByValue()).get())).getValue().intValue();
+        int highestFreq = frequencyOfEntryLogsInLedgerDirs.entrySet().stream()
+                .max(Map.Entry.comparingByValue()).get().getValue().intValue();
         return highestFreq;
     }
 

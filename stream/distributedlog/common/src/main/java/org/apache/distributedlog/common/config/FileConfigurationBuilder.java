@@ -17,12 +17,13 @@
  */
 package org.apache.distributedlog.common.config;
 
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.FileConfiguration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.commons.configuration2.builder.ReloadingFileBasedConfigurationBuilder;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 
 /**
  * Abstract out FileConfiguration subclass construction.
  */
 public interface FileConfigurationBuilder {
-    FileConfiguration getConfiguration() throws ConfigurationException;
+    ReloadingFileBasedConfigurationBuilder<PropertiesConfiguration> getConfiguration(long delay) throws ConfigurationException;
 }

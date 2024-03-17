@@ -57,7 +57,7 @@ import org.apache.bookkeeper.stats.prometheus.PrometheusMetricsProvider;
 import org.apache.bookkeeper.tools.framework.CliFlags;
 import org.apache.bookkeeper.tools.perf.utils.PaddingDecimalFormat;
 import org.apache.bookkeeper.util.DiskChecker;
-import org.apache.commons.configuration.CompositeConfiguration;
+import org.apache.commons.configuration2.CompositeConfiguration;
 
 /**
  * A perf writer to evaluate write performance.
@@ -196,6 +196,7 @@ public class JournalWriter implements Runnable {
 
     JournalWriter(CompositeConfiguration conf, Flags flags) {
         this.conf = new ServerConfiguration();
+        conf.copy(conf);
         this.conf.addConfiguration(conf);
         this.flags = flags;
     }

@@ -121,7 +121,7 @@
     <commons-cli.version>1.2</commons-cli.version>
     <commons-collections4.version>4.1</commons-collections4.version>
     <commons-codec.version>1.6</commons-codec.version>
-    <commons-configuration.version>1.10</commons-configuration.version>
+    <commons-configuration.version>2.10.0</commons-configuration.version>
     <commons-compress.version>1.26.0</commons-compress.version>
     <commons-lang.version>2.6</commons-lang.version>
     <commons-lang3.version>3.6</commons-lang3.version>
@@ -277,8 +277,8 @@
         <version>${commons-codec.version}</version>
       </dependency>
       <dependency>
-        <groupId>commons-configuration</groupId>
-        <artifactId>commons-configuration</artifactId>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-configuration2</artifactId>
         <version>${commons-configuration.version}</version>
       </dependency>
       <dependency>
@@ -779,8 +779,8 @@
       <artifactId>slf4j-api</artifactId>
     </dependency>
     <dependency>
-      <groupId>commons-configuration</groupId>
-      <artifactId>commons-configuration</artifactId>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-configuration2</artifactId>
     </dependency>
     <!-- test dependencies -->
     <dependency>

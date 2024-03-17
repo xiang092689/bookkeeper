@@ -23,7 +23,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import org.apache.commons.configuration.AbstractConfiguration;
+import org.apache.commons.configuration2.AbstractConfiguration;
 
 /**
  * Configuration view built on concurrent hash map for fast thread-safe access.
@@ -48,22 +48,23 @@ public class ConcurrentConfiguration extends AbstractConfiguration {
     }
 
     @Override
-    public Object getProperty(String key) {
-        return map.get(key);
-    }
-
-    @Override
-    public Iterator getKeys() {
+    protected Iterator<String> getKeysInternal() {
         return map.keySet().iterator();
     }
 
     @Override
-    public boolean containsKey(String key) {
+    protected Object getPropertyInternal(String key) {
+        return map.get(key);
+    }
+
+
+    @Override
+    protected boolean containsKeyInternal(String key) {
         return map.containsKey(key);
     }
 
     @Override
-    public boolean isEmpty() {
+    protected boolean isEmptyInternal() {
         return map.isEmpty();
     }
 

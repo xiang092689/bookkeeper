@@ -21,6 +21,7 @@ package org.apache.bookkeeper.common.conf;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URL;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -28,10 +29,19 @@ import java.util.Map;
 import java.util.Properties;
 import org.apache.bookkeeper.common.util.JsonUtil;
 import org.apache.bookkeeper.common.util.JsonUtil.ParseJsonException;
-import org.apache.commons.configuration.CompositeConfiguration;
-import org.apache.commons.configuration.Configuration;
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.configuration2.CompositeConfiguration;
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.ConfigurationDecoder;
+import org.apache.commons.configuration2.FileBasedConfiguration;
+import org.apache.commons.configuration2.ImmutableConfiguration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
+import org.apache.commons.configuration2.builder.fluent.Parameters;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.interpol.ConfigurationInterpolator;
+import org.apache.commons.configuration2.interpol.Lookup;
+import org.apache.commons.configuration2.sync.LockMode;
+import org.apache.commons.configuration2.sync.Synchronizer;
 
 /**
  * Component Configuration.
@@ -70,8 +80,8 @@ public abstract class ComponentConfiguration implements Configuration {
      * @throws ConfigurationException when failed to load configuration.
      */
     public void loadConf(URL confURL) throws ConfigurationException {
-        Configuration loadedConf = new PropertiesConfiguration(confURL);
-        loadConf(loadedConf);
+        FileBasedConfiguration loadedConf = new FileBasedConfigurationBuilder<FileBasedConfiguration>(PropertiesConfiguration.class)
+                .configure(new Parameters().properties().setFileName(confURL.getFile())).getConfiguration();
     }
 
     protected void loadConf(Configuration loadedConf) {
@@ -317,5 +327,100 @@ public abstract class ComponentConfiguration implements Configuration {
             }
         }
         return configMap;
+    }
+
+    @Override
+    public <T> T get(Class<T> cls, String key) {
+        return conf.get(cls, key);
+    }
+
+    @Override
+    public <T> T get(Class<T> cls, String key, T defaultValue) {
+        return conf.get(cls, key, defaultValue);
+    }
+
+    @Override
+    public ConfigurationInterpolator getInterpolator() {
+        return conf.getInterpolator();
+    }
+
+    @Override
+    public void setInterpolator(ConfigurationInterpolator configurationInterpolator) {
+        conf.setInterpolator(configurationInterpolator);
+    }
+
+    @Override
+    public void installInterpolator(Map<String, ? extends Lookup> map, Collection<? extends Lookup> collection) {
+        conf.installInterpolator(map, collection);
+    }
+
+    @Override
+    public Object getArray(Class<?> cls, String key) {
+        return conf.get(cls, key);
+    }
+
+    @Override
+    public Object getArray(Class<?> cls, String key, Object defaultValue) {
+        return conf.getArray(cls, key, defaultValue);
+    }
+
+    @Override
+    public <T> Collection<T> getCollection(Class<T> cls, String key, Collection<T> defaultValue) {
+        return conf.getCollection(cls, key, defaultValue);
+    }
+
+    @Override
+    public <T> Collection<T> getCollection(Class<T> cls, String key, Collection<T> target, Collection<T> defaultValue) {
+        return conf.getCollection(cls, key, target, defaultValue);
+    }
+
+    @Override
+    public String getEncodedString(String key) {
+        return conf.getEncodedString(key);
+    }
+
+    @Override
+    public String getEncodedString(String key, ConfigurationDecoder defaultConfigurationDecoder) {
+        return conf.getEncodedString(key, defaultConfigurationDecoder);
+    }
+
+    @Override
+    public <T> List<T> getList(Class<T> cls, String key) {
+        return conf.getList(cls, key);
+    }
+
+    @Override
+    public <T> List<T> getList(Class<T> cls, String key, List<T> defaultValue) {
+        return conf.getList(cls, key, defaultValue);
+    }
+
+    @Override
+    public ImmutableConfiguration immutableSubset(String key) {
+        return conf.immutableSubset(key);
+    }
+
+    @Override
+    public int size() {
+        return conf.size();
+    }
+
+    @Override
+    public Synchronizer getSynchronizer() {
+        return conf.getSynchronizer();
+    }
+
+    @Override
+    public void setSynchronizer(Synchronizer synchronizer) {
+        conf.setSynchronizer(synchronizer);
+    }
+
+    @Override
+    public void lock(LockMode lockMode) {
+        conf.lock(lockMode);
+    }
+
+    @Override
+    public void unlock(LockMode lockMode) {
+        conf.unlock(lockMode);
     }
 }

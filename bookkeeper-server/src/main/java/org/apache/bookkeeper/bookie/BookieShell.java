@@ -108,10 +108,13 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.configuration.CompositeConfiguration;
-import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.configuration2.CompositeConfiguration;
+import org.apache.commons.configuration2.FileBasedConfiguration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
+import org.apache.commons.configuration2.builder.fluent.Parameters;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -2741,8 +2744,9 @@ public class BookieShell implements Tool {
             CompositeConfiguration conf = new CompositeConfiguration();
             if (cmdLine.hasOption(CONF_OPT)) {
                 String val = cmdLine.getOptionValue(CONF_OPT);
-                conf.addConfiguration(new PropertiesConfiguration(
-                        new File(val).toURI().toURL()));
+                FileBasedConfiguration loadedConf = new FileBasedConfigurationBuilder<FileBasedConfiguration>(PropertiesConfiguration.class)
+                        .configure(new Parameters().properties().setFileName(val)).getConfiguration();
+                conf.copy(loadedConf);
             }
             shell.setConf(conf);
 

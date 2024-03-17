@@ -18,9 +18,13 @@
 package org.apache.distributedlog.common.config;
 
 import java.net.URL;
-import org.apache.commons.configuration.ConfigurationException;
-import org.apache.commons.configuration.FileConfiguration;
-import org.apache.commons.configuration.PropertiesConfiguration;
+
+import org.apache.commons.configuration2.FileBasedConfiguration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.commons.configuration2.builder.FileBasedConfigurationBuilder;
+import org.apache.commons.configuration2.builder.ReloadingFileBasedConfigurationBuilder;
+import org.apache.commons.configuration2.builder.fluent.Parameters;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 
 /**
  * Hide PropertiesConfiguration dependency.
@@ -33,7 +37,10 @@ public class PropertiesConfigurationBuilder implements FileConfigurationBuilder 
     }
 
     @Override
-    public FileConfiguration getConfiguration() throws ConfigurationException {
-        return new PropertiesConfiguration(url);
+    public ReloadingFileBasedConfigurationBuilder<PropertiesConfiguration> getConfiguration(long delay) throws ConfigurationException {
+        return new ReloadingFileBasedConfigurationBuilder<>(PropertiesConfiguration.class)
+                .configure(new Parameters()
+                        .fileBased()
+                        .setReloadingRefreshDelay(0L));
     }
 }
